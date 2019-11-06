@@ -6,6 +6,7 @@ project(canlib)
 set(SOURCE_FILES
     decoder.c
     encoder.c
+    utils.c
 )
 
 # add_executable(can ${SOURCE_FILES})

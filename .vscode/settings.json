@@ -1,6 +1,16 @@
 {
     "files.associations": {
         "assert.h": "c",
-        "queue.h": "c"
+        "queue.h": "c",
+        "utils.h": "c",
+        "stdint.h": "c",
+        "encoder.h": "c",
+        "decoder.h": "c",
+        "array": "c",
+        "hash_map": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "valarray": "c"
     }
 }
