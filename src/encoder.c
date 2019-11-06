@@ -15,15 +15,14 @@
  * bits
  * 7. Display the received bit stream
  * 8. Stop
-*/
+ */
 static uint32_t copy_binary_message_counter = 0;
-/* TODO: tem algum bug aqui no bit_stuffing */
 /* @return number of stuffed bits */
 static uint32_t bit_stuffing(uint8_t *dst, uint8_t *bitarray, uint32_t size) {
     /* a cada 5 bits iguais é adicionado um sexto com valor invertido */
     uint32_t counter              = 0;
     uint8_t buffer[256]           = {0};
-    uint8_t lastbit               = 0xFF;  // magic number
+    uint8_t lastbit               = 0xFF; /* magic number */
     uint32_t stuffed_bits_counter = 0;
     uint32_t lastidx              = 0;
     for(uint32_t i = 0; i < size; ++i) {

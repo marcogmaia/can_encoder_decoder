@@ -38,11 +38,26 @@ int main() {
 
 
     memset(buffer, 0, sizeof buffer);
-    returned_msg = decoder_decode_msg(returned_msg, &size);
-    CAN_configs_typedef decoded_configs;
-    decoder_decoded_message_to_configs(&decoded_configs, returned_msg);
+    returned_msg                        = decoder_decode_msg(returned_msg, &size);
+    CAN_configs_typedef decoded_configs = CAN_CONFIGS_DEFAULT;
     binary_to_str(buffer, returned_msg, size);
     printf("decoded:\n%s\n", buffer);
+    decoder_decoded_message_to_configs(&decoded_configs, returned_msg);
+
+    printf(
+        "StdId: 0x%X\n"
+        "ExtId: 0x%X\n"
+        "SRR: %u\n"
+        "IDE: %u\n"
+        "RTR: %u\n"
+        "r0: %u\n"
+        "r1: %u\n"
+        "DLC: %u\n"
+        "data??: %u\n"
+        "CRC: %u\n",
+        decoded_configs.StdId, decoded_configs.ExtId, decoded_configs.SRR, decoded_configs.IDE, decoded_configs.RTR,
+        decoded_configs.r0, decoded_configs.r1, decoded_configs.DLC, 123, decoded_configs.CRC);
 
     return 0;
 }
+
