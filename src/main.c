@@ -24,7 +24,7 @@ void binary_to_str(char *dst, uint8_t *src, uint32_t size) {
 }
 
 int main() {
-    uint8_t data[] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
+    uint8_t data[] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
     config.DLC     = sizeof data;
     config.data    = data;
     if(config.DLC > 8) config.DLC = 8;

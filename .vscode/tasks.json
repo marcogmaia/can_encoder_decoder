@@ -1,0 +1,17 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "ninja build",
+            "command": "ninja",
+            "args": [
+                "-C",
+                "${workspaceFolder}/build",
+            ],
+            "options": {
+                "cwd": "/usr/bin"
+            }
+        }
+    ],
+    "version": "2.0.0"
+}

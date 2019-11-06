@@ -47,38 +47,53 @@ uint32_t crc15(uint8_t *bitarray, uint32_t size) {
     return res;
 }
 
+/*
+1. Start
+2. Initialize the array for transmitted stream with the special bit pattern 0111 1110
+which indicates the beginning of the frame.
+3. Get the bit stream to be transmitted in to the array.
+4. Check for five consecutive ones and if they occur, stuff a bit 0
+5. Display the data transmitted as it appears on the data line after appending 0111 1110
+at the end
+6. For de−stuffing, copy the transmitted data to another array after detecting the stuffed
+bits
+7. Display the received bit stream
+8. Stop
+ */
+static uint32_t copy_binary_message_counter = 0;
+/* TODO: tem algum bug aqui no bit_stuffing */
 /* @return number of stuffed bits */
-static uint32_t bit_stuffing(uint8_t *bitarray, uint32_t size) {
+static uint32_t bit_stuffing(uint8_t *dst, uint8_t *bitarray, uint32_t size) {
     /* a cada 5 bits iguais é adicionado um sexto com valor invertido */
-    uint32_t counter              = 1;
-    uint8_t buffer[256]           = {bitarray[0]};
-    uint8_t lastbit               = bitarray[0];
+    uint32_t counter              = 0;
+    uint8_t buffer[256]           = {0};
+    uint8_t lastbit               = 0xFF;  // magic number
     uint32_t stuffed_bits_counter = 0;
-    for(uint32_t i = 1, buffer_index = 1; i < size + stuffed_bits_counter; ++i, ++buffer_index) {
-        buffer[buffer_index] = bitarray[i];
-        if(buffer[buffer_index] == lastbit) {
+    uint32_t lastidx              = 0;
+    for(uint32_t i = 0; i < size; ++i) {
+        uint8_t bit                      = bitarray[i];
+        buffer[i + stuffed_bits_counter] = bit;
+        if(lastbit == bit) {
+            lastbit = bit;
             ++counter;
+            if(counter == 5) {
+                counter = 1;
+                lastbit = !lastbit;
+                ++stuffed_bits_counter;
+                buffer[i + stuffed_bits_counter] = lastbit;
+            }
         }
         else {
+            lastbit = bit;
             counter = 1;
-            lastbit = buffer[buffer_index];
-        }
-
-        if(counter == 5) {
-            /* houve bit stuffing */
-            ++stuffed_bits_counter;
-            ++buffer_index;
-            buffer[buffer_index] = (lastbit == 1) ? 0 : 1;
-            counter              = 1;
-            lastbit              = buffer[buffer_index];
         }
     }
+    copy_binary_message_counter += stuffed_bits_counter;
     memcpy(bitarray, buffer, size + stuffed_bits_counter);
     return stuffed_bits_counter;
 }
 
 
-static uint32_t copy_binary_message_counter = 0;
 /* always clear the counter (copy_binary_message_counter = 0) before calling
  * copy_binary for the first time */
 static uint32_t copy_binary(uint8_t *dst, uint32_t src, uint32_t size) {
@@ -115,8 +130,9 @@ uint8_t *encoder_encode_msg(encoder_configs_typedef config, uint32_t *returned_m
             }
         }
         else {
-            /* REMOTE frame */
-            /* não preciso fazer mais nada, pois remote não tem payload */
+            /* REMOTE frame
+             * não preciso fazer mais nada, pois remote não tem payload
+             * */
         }
     }
     else {
@@ -135,7 +151,10 @@ uint8_t *encoder_encode_msg(encoder_configs_typedef config, uint32_t *returned_m
             }
         }
         else {
-            /* REMOTE frame */
+            /*
+             * REMOTE frame
+             * não é necessário adicionar payload
+             * */
         }
     }
 
@@ -146,15 +165,19 @@ uint8_t *encoder_encode_msg(encoder_configs_typedef config, uint32_t *returned_m
     copy_binary(encoded_message, crc, 15);
 
     /* bit stuffing aqui */
-    int32_t num_of_stuffed_bits = bit_stuffing(encoded_message, copy_binary_message_counter);
+    int32_t num_of_stuffed_bits = bit_stuffing(encoded_message, encoded_message, copy_binary_message_counter);
+    // copy_binary_message_counter += num_of_stuffed_bits;
 
     /* A patir do CRC_delimiter não há mais bitstuffing*/
+    /* add CRC_delimiter */
+    copy_binary(encoded_message, 1, 1);
+    /*  add ACK_field */
+    copy_binary(encoded_message, 1, 1);
+    /* add ACK_delimiter */
+    copy_binary(encoded_message, 1, 1);
+    /* add EOF */
+    copy_binary(encoded_message, 0b1111111, 7);
 
-    /* TODO: add CRC_delimiter */
-    /* TODO: add ACK_field */
-    /* TODO: add ACK_delimiter */
-    /* TODO: add EOF */
-
-    *returned_msg_size = copy_binary_message_counter + num_of_stuffed_bits;
+    *returned_msg_size = copy_binary_message_counter;
     return encoded_message;
 }
