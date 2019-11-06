@@ -21,25 +21,21 @@ void binary_to_str(char *dst, uint8_t *src, uint32_t size) {
     for(uint32_t i = 0; i < size; ++i) {
         dst[i] = src[i] + '0';
     }
-
 }
 
 int main() {
-    uint8_t data[] = {1, 2, 3, 4, 5, 6, 7};
+    uint8_t data[] = {0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA};
     config.DLC     = sizeof data;
     config.data    = data;
     if(config.DLC > 8) config.DLC = 8;
 
 
-    uint8_t buffer[256] = {0};
-    // copy_binary(buffer, &config.StdId, 11);
-    // binary_to_str(buffer, buffer, 11);
     uint32_t size;
-    uint8_t *returned_msg =  encoder_encode_msg(config, &size);
+    uint8_t *returned_msg = encoder_encode_msg(config, &size);
+    uint8_t buffer[256]   = {0};
     binary_to_str(buffer, returned_msg, size);
     printf("%s\n", buffer);
 
 
     return 0;
 }
-

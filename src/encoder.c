@@ -4,19 +4,79 @@
 
 static uint32_t encoder_bit_stuffing_counter = 0;
 
-void byte_to_binary(uint8_t *dst, uint8_t src) {
-    for(uint8_t i = 0; i < 8; ++i) {
-        dst[i] = src & (1 << i);
+// void byte_to_binary(uint8_t *dst, uint8_t src) {
+//     for(uint8_t i = 0; i < 8; ++i) {
+//         dst[i] = src & (1 << i);
+//     }
+// }
+
+// static void reverse_array(uint8_t *dst, uint8_t *src, uint32_t size) {
+//     uint8_t r[256] = {0};
+//     for(uint32_t i = 0; i < size; ++i) {
+//         r[i] = src[size - i - 1];
+//     }
+//     memcpy(dst, src, size);
+// }
+
+uint32_t crc15(uint8_t *bitarray, uint32_t size) {
+    // uint8_t res[15] = {0};
+    uint8_t crc[15] = {0};
+
+    for(uint32_t i = 0; i < size; ++i) {
+        uint8_t invert = bitarray[i] ^ crc[14];
+        crc[14]        = crc[13] ^ invert;
+        crc[13]        = crc[12];
+        crc[12]        = crc[11];
+        crc[11]        = crc[10];
+        crc[10]        = crc[9] ^ invert;
+        crc[9]         = crc[8];
+        crc[8]         = crc[7] ^ invert;
+        crc[7]         = crc[6] ^ invert;
+        crc[6]         = crc[5];
+        crc[5]         = crc[4];
+        crc[4]         = crc[3] ^ invert;
+        crc[3]         = crc[2] ^ invert;
+        crc[2]         = crc[1];
+        crc[1]         = crc[0];
+        crc[0]         = invert;
     }
+    uint32_t res = 0x0;
+    for(uint32_t i = 0; i < 15; ++i) {
+        res |= crc[i] << i;
+    }
+    return res;
 }
 
-static void reverse_array(uint8_t *dst, uint8_t *src, uint32_t size) {
-    uint8_t r[256] = {0};
-    for(uint32_t i = 0; i < size; ++i) {
-        r[i] = src[size - i - 1];
+/* @return number of stuffed bits */
+static uint32_t bit_stuffing(uint8_t *bitarray, uint32_t size) {
+    /* a cada 5 bits iguais é adicionado um sexto com valor invertido */
+    uint32_t counter              = 1;
+    uint8_t buffer[256]           = {bitarray[0]};
+    uint8_t lastbit               = bitarray[0];
+    uint32_t stuffed_bits_counter = 0;
+    for(uint32_t i = 1, buffer_index = 1; i < size + stuffed_bits_counter; ++i, ++buffer_index) {
+        buffer[buffer_index] = bitarray[i];
+        if(buffer[buffer_index] == lastbit) {
+            ++counter;
+        }
+        else {
+            counter = 1;
+            lastbit = buffer[buffer_index];
+        }
+
+        if(counter == 5) {
+            /* houve bit stuffing */
+            ++stuffed_bits_counter;
+            ++buffer_index;
+            buffer[buffer_index] = (lastbit == 1) ? 0 : 1;
+            counter              = 1;
+            lastbit              = buffer[buffer_index];
+        }
     }
-    memcpy(dst, src, size);
+    memcpy(bitarray, buffer, size + stuffed_bits_counter);
+    return stuffed_bits_counter;
 }
+
 
 static uint32_t copy_binary_message_counter = 0;
 /* always clear the counter (copy_binary_message_counter = 0) before calling
@@ -81,9 +141,12 @@ uint8_t *encoder_encode_msg(encoder_configs_typedef config, uint32_t *returned_m
 
     /* agora já tenho todos os dados, falta calcular o CRC */
 
-    /* TODO: add CRC */    
+    /* add CRC */
+    uint32_t crc = crc15(encoded_message, copy_binary_message_counter);
+    copy_binary(encoded_message, crc, 15);
 
-    /* TODO: fazer o bit stuffing aqui */
+    /* bit stuffing aqui */
+    int32_t num_of_stuffed_bits = bit_stuffing(encoded_message, copy_binary_message_counter);
 
     /* A patir do CRC_delimiter não há mais bitstuffing*/
 
@@ -92,6 +155,6 @@ uint8_t *encoder_encode_msg(encoder_configs_typedef config, uint32_t *returned_m
     /* TODO: add ACK_delimiter */
     /* TODO: add EOF */
 
-    *returned_msg_size = copy_binary_message_counter;
+    *returned_msg_size = copy_binary_message_counter + num_of_stuffed_bits;
     return encoded_message;
 }
