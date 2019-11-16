@@ -10,7 +10,28 @@
             ],
             "options": {
                 "cwd": "/usr/bin"
-            }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "type": "shell",
+            "label": "CppUTest",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "ninja build"
+            ],
+            "command": "${workspaceRoot}/build/tests/RunAllTests",
+            "args": [
+                "-c",
+                "-v",
+            ]
         }
     ],
     "version": "2.0.0"

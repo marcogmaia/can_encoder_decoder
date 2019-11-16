@@ -1,5 +1,18 @@
 #include <stdint.h>
+#include <assert.h>
 #include "utils.h"
+
+
+/* support a max of 255 characters (buffer size of 256) */
+void bitarray_to_str(char *dst, const uint8_t *src, const uint32_t size) {
+    assert(size < 256);
+    char buffer[256] = {0};
+    for(uint32_t i = 0; i < size; ++i) {
+        buffer[i] = (src[i] == 0) ? '0' : '1';
+    }
+    strncpy(dst, buffer, size);
+    // memcpy(dst, buffer, size+1);
+}
 
 
 uint32_t crc15(uint8_t *bitarray, uint32_t size) {

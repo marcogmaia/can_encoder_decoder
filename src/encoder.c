@@ -62,26 +62,27 @@ static uint32_t copy_binary(uint8_t *dst, uint32_t src, uint32_t size) {
     return size;
 }
 
-uint8_t *encoder_encode_msg(CAN_configs_typedef config, uint32_t *returned_msg_size) {
-    static uint8_t encoded_message[256];
-    memset(encoded_message, 0, sizeof encoded_message);
+
+void encoder_encode_msg(CAN_configs_typedef config, Encoded_message_typedef *encoded_message) {
+    // static uint8_t encoded_message[256];
+    memset(encoded_message->bitarray, 0, sizeof encoded_message->bitarray);
     copy_binary_message_counter = 0;
 
     if(config.DLC > 8) config.DLC = 8;
 
-    copy_binary(encoded_message, 0, 1); /* SoF */
-    copy_binary(encoded_message, config.StdId, 11);
+    copy_binary(encoded_message->bitarray, 0, 1); /* SoF */
+    copy_binary(encoded_message->bitarray, config.StdId, 11);
 
     if(config.IDE == 0) {
         /* frame Standard */
-        copy_binary(encoded_message, config.RTR, 1);
-        copy_binary(encoded_message, config.IDE, 1);
-        copy_binary(encoded_message, 0, 1); /* r0 */
-        copy_binary(encoded_message, config.DLC, 4);
+        copy_binary(encoded_message->bitarray, config.RTR, 1);
+        copy_binary(encoded_message->bitarray, config.IDE, 1);
+        copy_binary(encoded_message->bitarray, 0, 1); /* r0 */
+        copy_binary(encoded_message->bitarray, config.DLC, 4);
         if(config.RTR == 0) {
             /* DATA frame */
             for(uint32_t i = 0; i < config.DLC; ++i) {
-                copy_binary(encoded_message, config.data[i], 8);
+                copy_binary(encoded_message->bitarray, config.data[i], 8);
             }
         }
         else {
@@ -92,17 +93,17 @@ uint8_t *encoder_encode_msg(CAN_configs_typedef config, uint32_t *returned_msg_s
     }
     else {
         /* IDE == 1, frame estendido */
-        copy_binary(encoded_message, 1, 1); /* SRR must be recessive (1) */
-        copy_binary(encoded_message, config.IDE, 1);
-        copy_binary(encoded_message, config.ExtId, 18);
-        copy_binary(encoded_message, config.RTR, 1);
-        copy_binary(encoded_message, 0, 1); /* r1 */
-        copy_binary(encoded_message, 0, 1); /* r0 */
-        copy_binary(encoded_message, config.DLC, 4);
+        copy_binary(encoded_message->bitarray, 1, 1); /* SRR must be recessive (1) */
+        copy_binary(encoded_message->bitarray, config.IDE, 1);
+        copy_binary(encoded_message->bitarray, config.ExtId, 18);
+        copy_binary(encoded_message->bitarray, config.RTR, 1);
+        copy_binary(encoded_message->bitarray, 0, 1); /* r1 */
+        copy_binary(encoded_message->bitarray, 0, 1); /* r0 */
+        copy_binary(encoded_message->bitarray, config.DLC, 4);
         if(config.RTR == 0) {
             /* DATA frame */
             for(uint32_t i = 0; i < config.DLC; ++i) {
-                copy_binary(encoded_message, config.data[i], 8);
+                copy_binary(encoded_message->bitarray, config.data[i], 8);
             }
         }
         else {
@@ -116,23 +117,22 @@ uint8_t *encoder_encode_msg(CAN_configs_typedef config, uint32_t *returned_msg_s
     /* agora já tenho todos os dados, falta calcular o CRC */
 
     /* add CRC */
-    uint32_t crc = crc15(encoded_message, copy_binary_message_counter);
-    copy_binary(encoded_message, crc, 15);
+    uint32_t crc = crc15(encoded_message->bitarray, copy_binary_message_counter);
+    copy_binary(encoded_message->bitarray, crc, 15);
 
     /* bit stuffing aqui */
-    int32_t num_of_stuffed_bits = bit_stuffing(encoded_message, encoded_message, copy_binary_message_counter);
+    int32_t num_of_stuffed_bits = bit_stuffing(encoded_message->bitarray, encoded_message->bitarray, copy_binary_message_counter);
     // copy_binary_message_counter += num_of_stuffed_bits;
 
     /* A patir do CRC_delimiter não há mais bitstuffing*/
     /* add CRC_delimiter */
-    copy_binary(encoded_message, 1, 1);
+    copy_binary(encoded_message->bitarray, 1, 1);
     /*  add ACK_field */
-    copy_binary(encoded_message, 1, 1);
+    copy_binary(encoded_message->bitarray, 1, 1);
     /* add ACK_delimiter */
-    copy_binary(encoded_message, 1, 1);
+    copy_binary(encoded_message->bitarray, 1, 1);
     /* add EOF */
-    copy_binary(encoded_message, 0b1111111, 7);
+    copy_binary(encoded_message->bitarray, 0b1111111, 7);
 
-    *returned_msg_size = copy_binary_message_counter;
-    return encoded_message;
+    encoded_message->length = copy_binary_message_counter;
 }

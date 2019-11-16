@@ -31,32 +31,35 @@ int main() {
     // if(config.DLC > 8) config.DLC = 8;
 
     uint32_t size;
-    uint8_t *returned_msg = encoder_encode_msg(config, &size);
+    Encoded_message_typedef encoded_message;
+    encoder_encode_msg(config, &encoded_message);
+    // uint8_t *returned_msg = encoder_encode_msg(config, &size);
     uint8_t buffer[256]   = {0};
-    binary_to_str(buffer, returned_msg, size);
+    // binary_to_str(buffer, returned_msg, size);
+    bitarray_to_str(buffer, encoded_message.bitarray, encoded_message.length);
     printf("encoded:\n%s\n", buffer);
 
 
-    memset(buffer, 0, sizeof buffer);
-    returned_msg                        = decoder_decode_msg(returned_msg, &size);
-    CAN_configs_typedef decoded_configs = CAN_CONFIGS_DEFAULT;
-    binary_to_str(buffer, returned_msg, size);
-    printf("decoded:\n%s\n", buffer);
-    decoder_decoded_message_to_configs(&decoded_configs, returned_msg);
+    // memset(buffer, 0, sizeof buffer);
+    // returned_msg                        = decoder_decode_msg(returned_msg, &size);
+    // CAN_configs_typedef decoded_configs = CAN_CONFIGS_DEFAULT;
+    // binary_to_str(buffer, returned_msg, size);
+    // printf("decoded:\n%s\n", buffer);
+    // decoder_decoded_message_to_configs(&decoded_configs, returned_msg);
 
-    printf(
-        "StdId: 0x%X\n"
-        "ExtId: 0x%X\n"
-        "SRR: %u\n"
-        "IDE: %u\n"
-        "RTR: %u\n"
-        "r0: %u\n"
-        "r1: %u\n"
-        "DLC: %u\n"
-        "data??: %u\n"
-        "CRC: %u\n",
-        decoded_configs.StdId, decoded_configs.ExtId, decoded_configs.SRR, decoded_configs.IDE, decoded_configs.RTR,
-        decoded_configs.r0, decoded_configs.r1, decoded_configs.DLC, 123, decoded_configs.CRC);
+    // printf(
+    //     "StdId: 0x%X\n"
+    //     "ExtId: 0x%X\n"
+    //     "SRR: %u\n"
+    //     "IDE: %u\n"
+    //     "RTR: %u\n"
+    //     "r0: %u\n"
+    //     "r1: %u\n"
+    //     "DLC: %u\n"
+    //     "data??: %u\n"
+    //     "CRC: %u\n",
+    //     decoded_configs.StdId, decoded_configs.ExtId, decoded_configs.SRR, decoded_configs.IDE, decoded_configs.RTR,
+    //     decoded_configs.r0, decoded_configs.r1, decoded_configs.DLC, 123, decoded_configs.CRC);
 
     return 0;
 }
