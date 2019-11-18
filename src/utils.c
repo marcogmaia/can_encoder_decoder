@@ -15,7 +15,7 @@ void bitarray_to_str(char *dst, const uint8_t *src, const uint32_t size) {
 }
 
 
-uint32_t crc15(uint8_t *bitarray, uint32_t size) {
+uint32_t crc15(const uint8_t *bitarray, const uint32_t size) {
     // uint8_t res[15] = {0};
     uint8_t crc[15] = {0};
 

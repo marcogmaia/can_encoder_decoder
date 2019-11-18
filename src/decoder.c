@@ -1,40 +1,74 @@
+#include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include "decoder.h"
 
+/**
+ * https://www.kvaser.com/about-can/the-can-protocol/can-error-handling/
+ * 
+ * os tipos de erros que tem são 5:
+ * 1- Bit Monitoring. (manda um bit, recebe outro)
+ * 2- Bit Stuffing. (não foi feito o bit sutffing corretamente, preciso ter só um bit pra dar "assert"
+ *      no sexto bit pra ver se é oposto aos 5 anteriores)
+ * 3- Frame Check. ()
+ * 4- Acknowledgement Check.
+ * 5- Cyclic Redundancy Check.
+ */
 
-static uint32_t bit_unstuffing(uint8_t *dst, uint8_t *bitarray, uint32_t size) {
-    assert(size > 11);
-    uint8_t buffer[256]      = {0};
-    uint8_t *bptr            = buffer;
-    uint8_t lastbit          = 0xFF; /* magic number */
-    int32_t counter          = 0;
-    uint32_t unstuff_counter = 0;
-    /* os ultimos 10 bits n tem bit stuffing */
-    for(uint32_t i = 0; i < size - 10; ++i) {
-        uint8_t bit = bitarray[i];
-        if(bit == lastbit) {
-            ++counter;
-            if(counter == 5) {
-                *bptr = bit;
-                ++bptr;
-                ++i; /* skip bit */
-                ++unstuff_counter;
-                lastbit = 0xFF;
-                continue;
-            }
-        }
-        else {
-            lastbit = bit;
-            counter = 1;
-        }
-        *bptr = bit;
-        ++bptr;
+static uint32_t bitarray_to_int(uint8_t *bitarr, uint8_t size) {
+    // *num = 0;
+    uint32_t num = 0;
+    for(uint32_t i = 0; i < size; ++i) {
+        num |= bitarr[i] << (size - 1 - i);
     }
-    uint32_t newsize = size - unstuff_counter;
-    memcpy(dst, buffer, newsize);
-    memcpy(dst + newsize - 10, bitarray + size - 10, 10);
-    return size - unstuff_counter;
+    return num;
+}
+
+/* remover o sexto bit consecutivo igual */
+static void decoder_bit_destuff(uint8_t sample_bit, CAN_message_typedef *destuffed_bitarr) {
+    // static uint8_t current_bit = 0xFF;
+    static uint8_t bufsize        = 0;
+    static uint8_t buffer[256]    = {0};
+    static uint8_t last_bit       = 0xFF;
+    static uint8_t curr_bit_count = 0;
+
+
+    if(curr_bit_count == 5) {
+        curr_bit_count = 0;
+        last_bit       = 0xFF;
+        return;
+    }
+
+    buffer[bufsize] = sample_bit;
+    ++bufsize;
+
+    /* detect EOF */
+    {
+        static uint8_t eof_cnt = 0;
+        if(sample_bit == 1)
+            ++eof_cnt;
+        else
+            eof_cnt = 0;
+        if(eof_cnt == 7) {
+            buffer[bufsize]     = 1;
+            buffer[bufsize + 1] = 1;
+            buffer[bufsize + 2] = 1;
+            bufsize += 3;
+            memcpy(destuffed_bitarr->bitarray, buffer, bufsize);
+            destuffed_bitarr->length = bufsize;
+            return;
+        }
+    }
+
+
+    if(last_bit != sample_bit) {
+        curr_bit_count = 1;
+        last_bit       = sample_bit;
+    }
+    else if(curr_bit_count < 5) {
+        /* last_bit == sample_bit */
+        ++curr_bit_count;
+    }
 }
 
 
@@ -42,10 +76,10 @@ static uint32_t decoded_message_index = 0;
 /* alway zero the decoded_message_index (decoded_message_index = 0)
  * before calling binary_to_numbedecoded_message_indexr
  */
-void static binary_to_number(uint32_t *num, uint8_t *bitarr, uint32_t size) {
-    *num = 0;
+void static binary_to_number(void *num, uint8_t *bitarr, uint32_t size) {
+    *(uint32_t *)num = 0;
     for(uint32_t i = 0; i < size; ++i) {
-        *num |= bitarr[i + decoded_message_index] << (size - 1 - i);
+        *(uint32_t *)num |= bitarr[i + decoded_message_index] << (size - 1 - i);
     }
     decoded_message_index += size;
 }
@@ -80,7 +114,8 @@ void decoder_decoded_message_to_configs(CAN_configs_typedef *configs_dst, uint8_
 uint8_t *decoder_decode_msg(uint8_t *encoded_message, uint32_t *size) {
     static uint8_t decoded_message[256];
 
-    *size = bit_unstuffing(decoded_message, encoded_message, *size);
+
+    // *size = bit_unstuffing(decoded_message, encoded_message, *size);
 
     return decoded_message;
 }

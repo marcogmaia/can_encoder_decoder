@@ -25,6 +25,7 @@ set(SRC_FILES
     "${PROJECT_SOURCE_DIR}/src/decoder.c"
     "${PROJECT_SOURCE_DIR}/src/utils.c"
     "./encoder/test_encoder.cpp"
+    "./encoder/test_decoder.cpp"
     "./test_utils.cpp"
 )
 add_library(test_encoder 

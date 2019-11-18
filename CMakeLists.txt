@@ -2,10 +2,13 @@ cmake_minimum_required(VERSION 3.2)
 
 project(can)
 
+set(CMAKE_BUILD_TYPE debug)
+# set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb -Og -fdiagnostics-color=always")
 set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-color=always")
 
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -fdiagnostics-color=always")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb -Og -fdiagnostics-color=always")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fdiagnostics-color=always")
 
 set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR})
 

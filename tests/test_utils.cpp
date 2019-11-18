@@ -45,8 +45,8 @@ TEST_GROUP(utils) {
 
 TEST(utils, BitArrayToStr) {
     char dst[255] = {'\0'};
-    uint8_t str[] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1};
-    bitarray_to_str(dst, str, sizeof str);
+    uint8_t bitarr[] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1};
+    bitarray_to_str(dst, bitarr, sizeof bitarr);
 
     STRCMP_EQUAL("100001000111100011", dst);
 }

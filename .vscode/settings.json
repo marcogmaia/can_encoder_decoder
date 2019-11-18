@@ -12,6 +12,8 @@
         "initializer_list": "c",
         "utility": "c",
         "valarray": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "tuple": "c",
+        "candefs.h": "c"
     }
 }
