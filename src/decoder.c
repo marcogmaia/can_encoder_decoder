@@ -86,6 +86,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
         ACK,
         ACK_DL,
         CAN_EOF,
+        INTERFRAME_SPACING,
     };
 
     static enum decoder_fsm state = SOF;
@@ -93,15 +94,14 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
     static uint8_t buffer[256];
     static uint8_t size = 0;
 
-    /* trata o deStuff aqui */
+    /* "estado" que trata do destuff */
     {
+        static uint8_t curr_bit_count = 0;
+        static uint8_t last_bit       = 0xFF;
+        static bool is_stuffed_bit    = false;
+        /* só há bitstuffing até o CRC */
         if(state < CRC_DL) {
-            /* "estado que trata do destuff" */
             /* tem que matar o sexto bit depois de 5 iguais */
-            static uint8_t curr_bit_count = 0;
-            static uint8_t last_bit       = 0xFF;
-            static bool is_stuffed_bit    = false;
-
             is_stuffed_bit = (curr_bit_count == 5) ? true : false;
             curr_bit_count = (last_bit == sampled_bit) ? (curr_bit_count + 1) : 1;
             last_bit       = sampled_bit;
@@ -112,6 +112,12 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
                 is_stuffed_bit = false;
                 return;
             }
+        }
+        else {
+            /* reseta o estado caso não haja mais bitstuffing */
+            curr_bit_count = 0;
+            last_bit       = 0xFF;
+            is_stuffed_bit = false;
         }
     }
 
@@ -230,26 +236,55 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
                 state             = CRC_DL;
             }
         } break;
+
         case CRC_DL:
             buffer[size++] = sampled_bit;
             state          = ACK;
             break;
+
         case ACK:
             buffer[size++] = sampled_bit;
             state          = ACK_DL;
             break;
+
         case ACK_DL:
             buffer[size++] = sampled_bit;
             state          = CAN_EOF;
             break;
-        case CAN_EOF:
-            buffer[size++] = sampled_bit;
-            ++state_cnt;
-            /* +3 because interframe spacing */
-            if(state_cnt == 7 + 3) {
+
+        /**
+         * TODO: arrumar o EOF e o INTERFRAME
+         * é pra functionar com state_cnt = 7
+         */
+        case CAN_EOF: {
+            if(sampled_bit == 0) {
+                fprintf(stderr, "ERROR Frame EOF\n");
                 state_cnt = 0;
-                state     = SOF;
             }
-            break;
+            else {
+                buffer[size++] = sampled_bit;
+                ++state_cnt;
+            }
+
+            if(state_cnt == 7) {
+                // state_cnt = 0;
+                state_cnt = 0;
+                state     = INTERFRAME_SPACING;  // state = INTERFRAME_SPACING
+            }
+        } break;
+
+        case INTERFRAME_SPACING: {
+            if(sampled_bit == 0) {
+                fprintf(stderr, "ERROR Frame INTERFRAME_SPACING\n");
+            }
+            else {
+                buffer[size++] = sampled_bit;
+                ++state_cnt;
+            }
+            if(state_cnt == 3) {
+                state_cnt = 0;
+                state     = SOF; /* vai ficar aqui até acontecer o SoF */
+            }
+        } break;
     }
 }

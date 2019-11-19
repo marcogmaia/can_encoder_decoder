@@ -20,6 +20,10 @@ TEST_GROUP(decoder) {
         memset(&config, 0, sizeof config);
         memset(&test_config, 0, sizeof config);
         memset(&encoded_message, 0, sizeof encoded_message);
+
+        decoder_decode_msg(NULL, 1);
+        decoder_decode_msg(NULL, 1);
+        decoder_decode_msg(NULL, 1);
     }
 
     void test_configs(CAN_configs_typedef conf) {
@@ -56,6 +60,7 @@ TEST(decoder, decode1) {
     // for(uint32_t i = 0; i < 100; ++i) {
     //     test_config.StdId = i;
     test_configs(test_config);
+    // test_configs(test_config);
     // }
 
     // configs.StdId = 0x0671;
