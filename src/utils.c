@@ -11,7 +11,6 @@ void bitarray_to_str(char *dst, const uint8_t *src, const uint32_t size) {
         buffer[i] = (src[i] == 0) ? '0' : '1';
     }
     strncpy(dst, buffer, size);
-    // memcpy(dst, buffer, size+1);
 }
 
 
@@ -57,3 +56,13 @@ uint32_t crc15(const uint8_t *bitarray, const uint32_t size) {
 //     }
 //     memcpy(dst, src, size);
 // }
+
+
+uint32_t bitarray_to_int(const uint8_t *bitarr, uint8_t size) {
+    // *num = 0;
+    uint32_t num = 0;
+    for(uint32_t i = 0; i < size; ++i) {
+        num |= bitarr[i] << (size - 1 - i);
+    }
+    return num;
+}

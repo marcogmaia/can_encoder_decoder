@@ -5,15 +5,6 @@
 #include "decoder.h"
 
 
-static uint32_t bitarray_to_int(const uint8_t *bitarr, uint8_t size) {
-    // *num = 0;
-    uint32_t num = 0;
-    for(uint32_t i = 0; i < size; ++i) {
-        num |= bitarr[i] << (size - 1 - i);
-    }
-    return num;
-}
-
 /* remover o sexto bit consecutivo igual */
 static void decoder_bit_destuff(const uint8_t sample_bit, CAN_message_typedef *destuffed_bitarr) {
     // static uint8_t current_bit = 0xFF;
@@ -69,7 +60,7 @@ void static binary_to_number(void *num, uint8_t *bitarr, uint32_t size) {
  * 4- Acknowledgement Check.
  * 5- Cyclic Redundancy Check.
  */
-void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) {
+can_err decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) {
     enum decoder_fsm {
         SOF = 0,
         ID_A,
@@ -110,7 +101,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
                 /* se é o bitstuffed e não mudou o bit, então ocorreu o erro */
                 curr_bit_count = 1;
                 is_stuffed_bit = false;
-                return;
+                return CAN_ERROR_STUFFING;
             }
         }
         else {
@@ -224,7 +215,6 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
                 }
                 state = CRC;
             }
-
         } break;
 
         case CRC: {
@@ -237,20 +227,20 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
             }
         } break;
 
-        case CRC_DL:
+        case CRC_DL: {
             buffer[size++] = sampled_bit;
             state          = ACK;
-            break;
+        } break;
 
-        case ACK:
+        case ACK: {
             buffer[size++] = sampled_bit;
             state          = ACK_DL;
-            break;
+        } break;
 
-        case ACK_DL:
+        case ACK_DL: {
             buffer[size++] = sampled_bit;
             state          = CAN_EOF;
-            break;
+        } break;
 
         /**
          * TODO: arrumar o EOF e o INTERFRAME
@@ -287,4 +277,6 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
             }
         } break;
     }
+    
+    return CAN_OK;
 }

@@ -73,7 +73,7 @@ uint8_t bit_stuff(uint8_t *dst, uint8_t *begin, uint8_t *end) {
             uint8_t stuffbit = *ptr == 1 ? 0 : 1;
             buffer[size++]   = stuffbit;
             lastbit          = stuffbit;
-            counter = 1;
+            counter          = 1;
         }
     }
 

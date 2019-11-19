@@ -11,16 +11,8 @@ TEST_GROUP(decoder) {
     CAN_configs_typedef config, test_config;
     CAN_message_typedef encoded_message;
 
-    void setup() {
-        memset(&config, 0, sizeof config);
-        memset(&test_config, 0, sizeof config);
-        memset(&encoded_message, 0, sizeof encoded_message);
-    }
+    void setup() {}
     void teardown() {
-        memset(&config, 0, sizeof config);
-        memset(&test_config, 0, sizeof config);
-        memset(&encoded_message, 0, sizeof encoded_message);
-
         decoder_decode_msg(NULL, 1);
         decoder_decode_msg(NULL, 1);
         decoder_decode_msg(NULL, 1);
@@ -40,31 +32,26 @@ TEST_GROUP(decoder) {
         if(conf.IDE == 1) {
             LONGS_EQUAL_TEXT(conf.ExtId, decoded_configs.ExtId, "ExtId Failed");
         }
+        if(conf.RTR == 0) {
+            MEMCMP_EQUAL_TEXT(conf.data, decoded_configs.data, conf.DLC, "DATA Failed");
+        }
         BYTES_EQUAL_TEXT(conf.DLC, decoded_configs.DLC, "DLC Failed");
-        MEMCMP_EQUAL_TEXT(conf.data, decoded_configs.data, conf.DLC, "DATA Failed");
         LONGS_EQUAL_TEXT(conf.CRC, decoded_configs.CRC, "CRC Failed");
     }
 };
 
 TEST(decoder, decode1) {
     test_config = {
-        .StdId = 0x2,
-        .ExtId = 0xFF,
-        .IDE = 1,
-        .RTR = 0,
+        .StdId = 0x123,
+        .ExtId = 0x5FF7,
+        .IDE   = 1,
+        .RTR   = 0,
     };
     static uint8_t data[] = {0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0x12};
     test_config.DLC       = sizeof data;
     test_config.data      = data;
 
-    // for(uint32_t i = 0; i < 100; ++i) {
-    //     test_config.StdId = i;
     test_configs(test_config);
-    // test_configs(test_config);
-    // }
-
-    // configs.StdId = 0x0671;
-    // test_configs(configs);
 }
 
 TEST(decoder, decode2) {
@@ -78,8 +65,34 @@ TEST(decoder, decode2) {
     test_config.DLC  = sizeof data;
     test_config.data = data;
 
-    test_configs(test_config);
+    for(uint32_t i = 0; i < 0x7FF; ++i) {
+        test_config.StdId = i;
+        test_configs(test_config);
+        teardown();
+    }
+}
 
-    // configs.StdId = 0x0671;
-    // test_configs(configs);
+
+TEST(decoder, decode3) {
+    CAN_configs_typedef test_config = {
+        .StdId = 0x7FF,
+        .ExtId = 0x10FF,
+        .IDE   = 1,
+        .RTR   = 0,
+    };
+    uint8_t data[]   = {0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0x12};
+    test_config.DLC  = sizeof data;
+    test_config.data = data;
+
+    for(uint32_t i = 0; i < 0x3FFF; ++i) {
+        test_config.ExtId = i;
+        test_configs(test_config);
+        teardown();
+    }
+
+    for(uint32_t i = 0; i < 0x7FF; ++i) {
+        test_config.StdId = i;
+        test_configs(test_config);
+        teardown();
+    }
 }

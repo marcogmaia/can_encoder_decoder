@@ -20,7 +20,7 @@ typedef struct CAN_configs {
                         Max_Data = 0x7FF. */
     uint32_t ExtId; /* Specifies the extended identifier.
                          This parameter must be a number between Min_Data = 0 and
-                       Max_Data = 0x1FFFFFFF. */
+                       Max_Data = 0x3FFFF. */
     uint8_t SRR;
     uint8_t IDE;    /* Specifies the type of frame for the message that will be
                         transmitted. */
@@ -33,3 +33,12 @@ typedef struct CAN_configs {
     uint8_t *data;  /* Pointer to data to be transmitted */
     uint32_t CRC;
 } CAN_configs_typedef;
+
+typedef enum enum_can_err {
+    CAN_OK = 0,
+    CAN_ERROR_BIT,
+    CAN_ERROR_STUFFING,
+    CAN_ERROR_FRAME,
+    CAN_ERROR_ACK,
+    CAN_ERROR_CRC,
+} can_err;
