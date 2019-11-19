@@ -14,6 +14,10 @@
         "valarray": "c",
         "string.h": "c",
         "tuple": "c",
-        "candefs.h": "c"
+        "candefs.h": "c",
+        "stdbool.h": "c",
+        "cstdbool": "c",
+        "c++config.h": "c",
+        "string": "cpp"
     }
 }

@@ -10,4 +10,6 @@
  */
 void decoder_decoded_message_to_configs(CAN_configs_typedef *p_configs_dst, uint8_t *p_decoded_message);
 // void decoder_bit_destuff(uint8_t sample_bit, CAN_message_typedef *destuffed_bitarr);
-uint8_t *decoder_decode_msg(uint8_t *encoded_message, uint32_t *size);
+// uint8_t *decoder_decode_msg(CAN_message_typedef *p_encoded_message);
+
+void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit);

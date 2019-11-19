@@ -113,7 +113,7 @@ static void encoder_message_add_num_to_bits(CAN_message_typedef *p_encoded_messa
     p_encoded_message->length += size;
 }
 
-void encoder_encode_msg(CAN_configs_typedef config, CAN_message_typedef *p_encoded_message) {
+void encoder_encode_msg(CAN_configs_typedef *p_config, CAN_message_typedef *p_encoded_message) {
     // static uint8_t encoded_message[256];
     memset(p_encoded_message->bitarray, 0, sizeof p_encoded_message->bitarray);
     p_encoded_message->length = 0;
@@ -128,19 +128,19 @@ void encoder_encode_msg(CAN_configs_typedef config, CAN_message_typedef *p_encod
 
     encoder_message_add_num_to_bits(p_encoded_message, 0, 1);
     /* O BUG é que não tá começando com length == 0 !!! */
-    encoder_message_add_num_to_bits(p_encoded_message, config.StdId, 11);
+    encoder_message_add_num_to_bits(p_encoded_message, p_config->StdId, 11);
 
-    uint8_t data_length = (config.DLC > 8) ? 8 : config.DLC;
-    if(config.IDE == 0) {
+    uint8_t data_length = (p_config->DLC > 8) ? 8 : p_config->DLC;
+    if(p_config->IDE == 0) {
         /* frame Standard */
-        encoder_message_add_num_to_bits(p_encoded_message, config.RTR, 1);
-        encoder_message_add_num_to_bits(p_encoded_message, config.IDE, 1);
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->RTR, 1);
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->IDE, 1);
         encoder_message_add_num_to_bits(p_encoded_message, 0, 1); /* r0 */
-        encoder_message_add_num_to_bits(p_encoded_message, config.DLC, 4);
-        if(config.RTR == 0) {
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->DLC, 4);
+        if(p_config->RTR == 0) {
             /* DATA frame */
             for(uint32_t i = 0; i < data_length; ++i) {
-                encoder_message_add_num_to_bits(p_encoded_message, config.data[i], 8);
+                encoder_message_add_num_to_bits(p_encoded_message, p_config->data[i], 8);
             }
         }
         else {
@@ -152,17 +152,17 @@ void encoder_encode_msg(CAN_configs_typedef config, CAN_message_typedef *p_encod
     else {
         /* IDE == 1, frame estendido */
         encoder_message_add_num_to_bits(p_encoded_message, 1, 1); /* SRR must be recessive (1) */
-        encoder_message_add_num_to_bits(p_encoded_message, config.IDE, 1);
-        encoder_message_add_num_to_bits(p_encoded_message, config.ExtId, 18);
-        encoder_message_add_num_to_bits(p_encoded_message, config.RTR, 1);
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->IDE, 1);
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->ExtId, 18);
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->RTR, 1);
         encoder_message_add_num_to_bits(p_encoded_message, 0, 1); /* r1 */
         encoder_message_add_num_to_bits(p_encoded_message, 0, 1); /* r0 */
-        encoder_message_add_num_to_bits(p_encoded_message, config.DLC, 4);
-        if(config.RTR == 0) {
+        encoder_message_add_num_to_bits(p_encoded_message, p_config->DLC, 4);
+        if(p_config->RTR == 0) {
             /* DATA frame */
             for(uint32_t i = 0; i < data_length; ++i) {
                 // copy_binary(encoded_message->bitarray, config.data[i], 8);
-                encoder_message_add_num_to_bits(p_encoded_message, config.data[i], 8);
+                encoder_message_add_num_to_bits(p_encoded_message, p_config->data[i], 8);
             }
         }
         else {
@@ -176,7 +176,8 @@ void encoder_encode_msg(CAN_configs_typedef config, CAN_message_typedef *p_encod
     /* agora já tenho todos os dados, falta calcular o CRC */
 
     /* add CRC */
-    uint32_t crc = crc15(p_encoded_message->bitarray, p_encoded_message->length);
+    uint32_t crc  = crc15(p_encoded_message->bitarray, p_encoded_message->length);
+    p_config->CRC = crc;
     encoder_message_add_num_to_bits(p_encoded_message, crc, 15);
 
 

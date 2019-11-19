@@ -58,7 +58,7 @@ TEST(encoder, encode1) {
 
     // uint32_t returned_msg_size;
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     STRCMP_EQUAL(
@@ -82,7 +82,7 @@ TEST(encoder, encode2) {
 
     // uint32_t returned_msg_size;
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     // 0 0000111110011
@@ -102,7 +102,7 @@ TEST(encoder, encode3) {
     config.data    = data;
 
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     STRCMP_EQUAL(
@@ -124,7 +124,7 @@ TEST(encoder, encode4) {
     };
 
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     STRCMP_EQUAL("0100010010011111000001000001111100101000001010111011111000011111111111", actual);
@@ -143,7 +143,7 @@ TEST(encoder, encode5) {
     config.DLC     = sizeof data;
 
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     STRCMP_EQUAL("0100010010011111000001000001111100100000101110101010101010101010101000011111001011101111111111",
@@ -163,7 +163,7 @@ TEST(encoder, encode6) {
     };
 
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
     // char actual[256] = {0};
     bitarray_to_str(actual, encoded_message.bitarray, encoded_message.length);
     STRCMP_EQUAL("010001001001111100000100000111110010100100001010011111001101111111111", actual);

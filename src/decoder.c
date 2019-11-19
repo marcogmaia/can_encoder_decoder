@@ -1,21 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "decoder.h"
 
-/**
- * https://www.kvaser.com/about-can/the-can-protocol/can-error-handling/
- * 
- * os tipos de erros que tem são 5:
- * 1- Bit Monitoring. (manda um bit, recebe outro)
- * 2- Bit Stuffing. (não foi feito o bit sutffing corretamente, preciso ter só um bit pra dar "assert"
- *      no sexto bit pra ver se é oposto aos 5 anteriores)
- * 3- Frame Check. ()
- * 4- Acknowledgement Check.
- * 5- Cyclic Redundancy Check.
- */
 
-static uint32_t bitarray_to_int(uint8_t *bitarr, uint8_t size) {
+static uint32_t bitarray_to_int(const uint8_t *bitarr, uint8_t size) {
     // *num = 0;
     uint32_t num = 0;
     for(uint32_t i = 0; i < size; ++i) {
@@ -25,50 +15,33 @@ static uint32_t bitarray_to_int(uint8_t *bitarr, uint8_t size) {
 }
 
 /* remover o sexto bit consecutivo igual */
-static void decoder_bit_destuff(uint8_t sample_bit, CAN_message_typedef *destuffed_bitarr) {
+static void decoder_bit_destuff(const uint8_t sample_bit, CAN_message_typedef *destuffed_bitarr) {
     // static uint8_t current_bit = 0xFF;
-    static uint8_t bufsize        = 0;
+    static uint8_t size           = 0;
     static uint8_t buffer[256]    = {0};
     static uint8_t last_bit       = 0xFF;
     static uint8_t curr_bit_count = 0;
+    static bool is_stuffed_bit    = 0;
 
+    curr_bit_count = (last_bit == sample_bit) ? (curr_bit_count + 1) : 1;
+    is_stuffed_bit = (curr_bit_count == 6) ? true : false;
 
-    if(curr_bit_count == 5) {
-        curr_bit_count = 0;
-        last_bit       = 0xFF;
+    if(is_stuffed_bit) {
+        /* se é o bitstuffed e não mudou o bit, então ocorreu o erro */
+        if(last_bit == sample_bit) {
+            /* ERROR BitStuff */
+            fprintf(stderr, "ERROR: BitStuff");
+        }
         return;
     }
-
-    buffer[bufsize] = sample_bit;
-    ++bufsize;
-
-    /* detect EOF */
-    {
-        static uint8_t eof_cnt = 0;
-        if(sample_bit == 1)
-            ++eof_cnt;
-        else
-            eof_cnt = 0;
-        if(eof_cnt == 7) {
-            buffer[bufsize]     = 1;
-            buffer[bufsize + 1] = 1;
-            buffer[bufsize + 2] = 1;
-            bufsize += 3;
-            memcpy(destuffed_bitarr->bitarray, buffer, bufsize);
-            destuffed_bitarr->length = bufsize;
-            return;
-        }
+    else {
+        buffer[size++] = sample_bit;
     }
 
+    last_bit = sample_bit;
 
-    if(last_bit != sample_bit) {
-        curr_bit_count = 1;
-        last_bit       = sample_bit;
-    }
-    else if(curr_bit_count < 5) {
-        /* last_bit == sample_bit */
-        ++curr_bit_count;
-    }
+    /* find EoF */
+    { static uint8_t eof_cnt = 0; }
 }
 
 
@@ -84,38 +57,196 @@ void static binary_to_number(void *num, uint8_t *bitarr, uint32_t size) {
     decoded_message_index += size;
 }
 
-void decoder_decoded_message_to_configs(CAN_configs_typedef *configs_dst, uint8_t *decoded_message) {
-    decoded_message_index = 1; /* skip SoF */
-    binary_to_number(&configs_dst->StdId, decoded_message, 11);
-    binary_to_number(&configs_dst->RTR, decoded_message, 1);
-    binary_to_number(&configs_dst->IDE, decoded_message, 1);
-    binary_to_number(&configs_dst->r0, decoded_message, 1);
 
-    if(configs_dst->IDE == 0) {
-        /* Std frame */
-        binary_to_number(&configs_dst->DLC, decoded_message, 4);
-        // memcpy(&configs_dst->data, decoded_message + 19, configs_dst->DLC);
-        decoded_message_index += configs_dst->DLC * 8;
-        binary_to_number(&configs_dst->CRC, decoded_message, 15);
+/**
+ * https://www.kvaser.com/about-can/the-can-protocol/can-error-handling/
+ *
+ * os tipos de erros que tem são 5:
+ * 1- Bit Monitoring. (manda um bit, recebe outro)
+ * 2- Bit Stuffing. (não foi feito o bit sutffing corretamente, preciso ter só um bit pra dar "assert"
+ *      no sexto bit pra ver se é oposto aos 5 anteriores)
+ * 3- Frame Check. (CRC_DEL, ACK_DEL, EOF, esses campos são fixos)
+ * 4- Acknowledgement Check.
+ * 5- Cyclic Redundancy Check.
+ */
+void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) {
+    enum decoder_fsm {
+        SOF = 0,
+        ID_A,
+        RTR,
+        IDE,
+        DLC,
+        ID_B,
+        R0,
+        R1,
+        DATA,
+        CRC,
+        /* a partir daqui não há mais stuffing */
+        CRC_DL,
+        ACK,
+        ACK_DL,
+        CAN_EOF,
+    };
+
+    static enum decoder_fsm state = SOF;
+
+    static uint8_t buffer[256];
+    static uint8_t size = 0;
+
+    /* trata o deStuff aqui */
+    {
+        if(state < CRC_DL) {
+            /* "estado que trata do destuff" */
+            static uint8_t curr_bit_count = 0;
+            static uint8_t last_bit       = 0xFF;
+            static bool is_stuffed_bit    = false;
+
+            is_stuffed_bit = (curr_bit_count == 5) ? true : false;
+            curr_bit_count = (last_bit == sampled_bit) ? (curr_bit_count + 1) : 1;
+            last_bit       = sampled_bit;
+
+            if(is_stuffed_bit) {
+                /* se é o bitstuffed e não mudou o bit, então ocorreu o erro */
+                curr_bit_count = 0;
+                is_stuffed_bit = false;
+                return;
+            }
+        }
     }
-    else {
-        /* extended frame */
-        // memcpy(&configs_dst->SRR, decoded_message + 12, 1);
-        // memcpy(&configs_dst->ExtId, decoded_message + 14, 18);
-        // memcpy(&configs_dst->RTR, decoded_message + 32, 1);
-        // memcpy(&configs_dst->r0, decoded_message + 33, 1);
-        // memcpy(&configs_dst->r1, decoded_message + 34, 1);
-        // memcpy(&configs_dst->DLC, decoded_message + 35, 4);
-        // memcpy(&configs_dst->data, decoded_message + 36, configs_dst->DLC * 8);
-        // memcpy(&configs_dst->CRC, decoded_message + 36 + configs_dst->DLC * 8, 15);
+
+    static uint8_t state_cnt = 0;
+    switch(state) {
+        case SOF: {
+            /* se SoF faz o setup */
+            if(sampled_bit == 0) {
+                memset(p_config_dst, 0, sizeof *p_config_dst);
+                static uint8_t data[8];
+                memset(data, 0, sizeof data);
+                p_config_dst->data = data;
+
+                buffer[size++] = sampled_bit;
+                state          = ID_A;
+            }
+        } break;
+
+        case ID_A: {
+            static uint8_t state_cnt = 0;
+            buffer[size++]           = sampled_bit;
+            ++state_cnt;
+            if(state_cnt == 11) {
+                state_cnt           = 0;
+                p_config_dst->StdId = bitarray_to_int(&buffer[size - 11], 11);
+                state               = RTR;
+            }
+        } break;
+
+        case RTR: {
+            buffer[size++]    = sampled_bit;
+            p_config_dst->RTR = sampled_bit;
+
+            if(p_config_dst->SRR) {
+                state = R1;
+            }
+            else {
+                state = IDE;
+            }
+        } break;
+
+        case IDE: {
+            buffer[size++]    = sampled_bit;
+            p_config_dst->IDE = sampled_bit;
+
+            if(p_config_dst->IDE == 0) {
+                state = R0;
+            }
+            /* IDE == 1 */
+            else {
+                p_config_dst->SRR = p_config_dst->RTR;
+                state             = RTR;
+            }
+        } break;
+
+        case R0: {
+            buffer[size++] = sampled_bit;
+            state          = DLC;
+        } break;
+
+        case R1: {
+            buffer[size++] = sampled_bit;
+            state          = R0;
+        } break;
+
+        case ID_B: {
+            buffer[size++] = sampled_bit;
+            ++state_cnt;
+            if(state_cnt == 18) {
+                state_cnt           = 0;
+                p_config_dst->ExtId = bitarray_to_int(&buffer[size - 18], 18);
+                state               = R1;
+            }
+        } break;
+
+        case DLC: {
+            buffer[size++] = sampled_bit;
+            ++state_cnt;
+            if(state_cnt == 4) {
+                state_cnt         = 0;
+                p_config_dst->DLC = (uint8_t)bitarray_to_int(&buffer[size - 4], 4);
+                if(p_config_dst->RTR == 1) {
+                    state = CRC;
+                }
+                else {
+                    state = DATA;
+                }
+            }
+        } break;
+
+        case DATA: {
+            // static uint8_t state_cnt = 0;
+            uint8_t data_size = (p_config_dst->DLC > 8) ? 8 : p_config_dst->DLC;
+
+            buffer[size++] = sampled_bit;
+            ++state_cnt;
+
+            if(state_cnt == (data_size * 8)) {
+                state_cnt = 0;
+                for(uint32_t i = 0; i < data_size; ++i) {
+                    p_config_dst->data[i] = bitarray_to_int(&buffer[size - (data_size - i) * 8], 8);
+                }
+                state = CRC;
+            }
+
+        } break;
+
+        case CRC: {
+            buffer[size++] = sampled_bit;
+            ++state_cnt;
+            if(state_cnt == 15) {
+                state_cnt         = 0;
+                p_config_dst->CRC = bitarray_to_int(buffer + size - 15, 15);
+                state             = CRC_DL;
+            }
+        } break;
+        case CRC_DL:
+            buffer[size++] = sampled_bit;
+            state          = ACK;
+            break;
+        case ACK:
+            buffer[size++] = sampled_bit;
+            state          = ACK_DL;
+            break;
+        case ACK_DL:
+            buffer[size++] = sampled_bit;
+            state          = CAN_EOF;
+            break;
+        case CAN_EOF:
+            buffer[size++] = sampled_bit;
+            ++state_cnt;
+            /* +3 because interframe spacing */
+            if(state_cnt == 7 + 3) {
+                state_cnt = 0;
+                state     = SOF;
+            }
+            break;
     }
-}
-
-uint8_t *decoder_decode_msg(uint8_t *encoded_message, uint32_t *size) {
-    static uint8_t decoded_message[256];
-
-
-    // *size = bit_unstuffing(decoded_message, encoded_message, *size);
-
-    return decoded_message;
 }

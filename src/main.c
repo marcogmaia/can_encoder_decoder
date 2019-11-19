@@ -18,7 +18,7 @@ int main() {
     config.data    = data;
 
     CAN_message_typedef encoded_message;
-    encoder_encode_msg(config, &encoded_message);
+    encoder_encode_msg(&config, &encoded_message);
 
     char strbuf[256] = {0};
     bitarray_to_str(strbuf, encoded_message.bitarray, encoded_message.length);
