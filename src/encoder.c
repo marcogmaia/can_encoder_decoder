@@ -4,6 +4,7 @@
 #include "encoder.h"
 
 #include <stdio.h>
+#include <stdbool.h>
 /*
  * 1. Start
  * 2. Initialize the array for transmitted stream with the special bit pattern 0111 1110
@@ -58,35 +59,26 @@
  */
 uint8_t bit_stuff(uint8_t *dst, uint8_t *begin, uint8_t *end) {
     uint8_t buffer[256];
-    uint8_t size = 0;
+    memset(buffer, 0xFF, sizeof buffer);
+    uint8_t size    = 0;
+    bool need_stuff = false;
 
-    uint8_t lastbit     = 0xFF;
-    uint8_t stuff_count = 0;
+    uint8_t lastbit = 0xFF;
+    uint8_t counter = 0;
     for(uint8_t *ptr = begin; ptr != end; ++ptr) {
-        buffer[size++] = *ptr; /*  */
-
-        if(lastbit != buffer[size - 1]) {
-            lastbit     = buffer[size - 1];
-            stuff_count = 1;
-        }
-        else {
-            ++stuff_count;
-        }
-
-        if(stuff_count == 5) {
-            lastbit        = !lastbit;
-            stuff_count    = 1;
-            buffer[size++] = lastbit;
+        counter        = (lastbit == *ptr) ? (counter + 1) : 1;
+        buffer[size++] = *ptr;
+        lastbit        = *ptr;
+        if(counter == 5) {
+            uint8_t stuffbit = *ptr == 1 ? 0 : 1;
+            buffer[size++]   = stuffbit;
+            lastbit          = stuffbit;
+            counter = 1;
         }
     }
-    // memcpy()
-    // for(uint32_t i = 0; i < 10; ++i) {
-    //     buffer[size++] = 1;
-    // }
-    printf("\n");
+
     memcpy(dst, buffer, size);
-    uint8_t stuffed_size = size - (end - begin);
-    return stuffed_size;
+    return size;
 }
 
 /* transform an integer into a bitarray */
@@ -186,8 +178,8 @@ void encoder_encode_msg(CAN_configs_typedef *p_config, CAN_message_typedef *p_en
     //     = bit_stuffing(encoded_message->bitarray, encoded_message->bitarray, copy_binary_message_counter);
     // copy_binary_message_counter += num_of_stuffed_bits;
 
-    p_encoded_message->length += bit_stuff(p_encoded_message->bitarray, p_encoded_message->bitarray,
-                                           p_encoded_message->bitarray + p_encoded_message->length);
+    p_encoded_message->length = bit_stuff(p_encoded_message->bitarray, p_encoded_message->bitarray,
+                                          p_encoded_message->bitarray + p_encoded_message->length);
 
     /* A patir do CRC_delimiter não há mais bitstuffing*/
     /* add CRC_delimiter */

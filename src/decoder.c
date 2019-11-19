@@ -97,6 +97,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
     {
         if(state < CRC_DL) {
             /* "estado que trata do destuff" */
+            /* tem que matar o sexto bit depois de 5 iguais */
             static uint8_t curr_bit_count = 0;
             static uint8_t last_bit       = 0xFF;
             static bool is_stuffed_bit    = false;
@@ -107,7 +108,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
 
             if(is_stuffed_bit) {
                 /* se é o bitstuffed e não mudou o bit, então ocorreu o erro */
-                curr_bit_count = 0;
+                curr_bit_count = 1;
                 is_stuffed_bit = false;
                 return;
             }
@@ -119,11 +120,13 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
         case SOF: {
             /* se SoF faz o setup */
             if(sampled_bit == 0) {
+                memset(buffer, 0xFF, sizeof buffer);
                 memset(p_config_dst, 0, sizeof *p_config_dst);
                 static uint8_t data[8];
                 memset(data, 0, sizeof data);
                 p_config_dst->data = data;
 
+                size           = 0;
                 buffer[size++] = sampled_bit;
                 state          = ID_A;
             }
@@ -144,7 +147,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
             buffer[size++]    = sampled_bit;
             p_config_dst->RTR = sampled_bit;
 
-            if(p_config_dst->SRR) {
+            if(p_config_dst->SRR == 1) {
                 state = R1;
             }
             else {
@@ -162,7 +165,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
             /* IDE == 1 */
             else {
                 p_config_dst->SRR = p_config_dst->RTR;
-                state             = RTR;
+                state             = ID_B;
             }
         } break;
 
@@ -182,7 +185,7 @@ void decoder_decode_msg(CAN_configs_typedef *p_config_dst, uint8_t sampled_bit) 
             if(state_cnt == 18) {
                 state_cnt           = 0;
                 p_config_dst->ExtId = bitarray_to_int(&buffer[size - 18], 18);
-                state               = R1;
+                state               = RTR;
             }
         } break;
 

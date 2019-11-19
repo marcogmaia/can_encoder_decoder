@@ -16,7 +16,11 @@ TEST_GROUP(decoder) {
         memset(&test_config, 0, sizeof config);
         memset(&encoded_message, 0, sizeof encoded_message);
     }
-    void teardown() {}
+    void teardown() {
+        memset(&config, 0, sizeof config);
+        memset(&test_config, 0, sizeof config);
+        memset(&encoded_message, 0, sizeof encoded_message);
+    }
 
     void test_configs(CAN_configs_typedef conf) {
         encoder_encode_msg(&conf, &encoded_message);
@@ -29,6 +33,9 @@ TEST_GROUP(decoder) {
         LONGS_EQUAL_TEXT(conf.StdId, decoded_configs.StdId, "StdId Failed");
         BYTES_EQUAL_TEXT(conf.RTR, decoded_configs.RTR, "RTR Failed");
         BYTES_EQUAL_TEXT(conf.IDE, decoded_configs.IDE, "IDE Failed");
+        if(conf.IDE == 1) {
+            LONGS_EQUAL_TEXT(conf.ExtId, decoded_configs.ExtId, "ExtId Failed");
+        }
         BYTES_EQUAL_TEXT(conf.DLC, decoded_configs.DLC, "DLC Failed");
         MEMCMP_EQUAL_TEXT(conf.data, decoded_configs.data, conf.DLC, "DATA Failed");
         LONGS_EQUAL_TEXT(conf.CRC, decoded_configs.CRC, "CRC Failed");
@@ -38,8 +45,8 @@ TEST_GROUP(decoder) {
 TEST(decoder, decode1) {
     test_config = {
         .StdId = 0x2,
-        // .ExtId = 0xFF,
-        .IDE = 0,
+        .ExtId = 0xFF,
+        .IDE = 1,
         .RTR = 0,
     };
     static uint8_t data[] = {0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0x12};
@@ -48,26 +55,26 @@ TEST(decoder, decode1) {
 
     // for(uint32_t i = 0; i < 100; ++i) {
     //     test_config.StdId = i;
-        test_configs(test_config);
+    test_configs(test_config);
     // }
 
     // configs.StdId = 0x0671;
     // test_configs(configs);
 }
 
-// TEST(decoder, decode2) {
-//     CAN_configs_typedef test_config = {
-//         .StdId = 0x7FF,
-//         // .ExtId = 0xFF,
-//         .IDE = 0,
-//         .RTR = 0,
-//     };
-//     uint8_t data[] = {0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0x12};
-//     test_config.DLC       = sizeof data;
-//     test_config.data      = data;
+TEST(decoder, decode2) {
+    CAN_configs_typedef test_config = {
+        .StdId = 0x7FF,
+        // .ExtId = 0xFF,
+        .IDE = 0,
+        .RTR = 0,
+    };
+    uint8_t data[]   = {0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0xBB, 0x12};
+    test_config.DLC  = sizeof data;
+    test_config.data = data;
 
-//     test_configs(test_config);
+    test_configs(test_config);
 
-//     // configs.StdId = 0x0671;
-//     // test_configs(configs);
-// }
+    // configs.StdId = 0x0671;
+    // test_configs(configs);
+}
